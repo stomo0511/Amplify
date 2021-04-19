@@ -17,8 +17,8 @@ from amplify.client import FixstarsClient
 client = FixstarsClient()
 client.token = "jtSrmOum5m4eTuMEKDbrBekiOqa6nkCg"
 client.parameters.timeout = 5000  # タイムアウト5秒
-# client.parameters.outputs.duplicate = True  # 同じエネルギー値の解を列挙するオプション
-# client.parameters.outputs.num_outputs = 0   # 見つかったすべての解を出力
+client.parameters.outputs.duplicate = True  # 同じエネルギー値の解を列挙するオプション
+client.parameters.outputs.num_outputs = 0   # 見つかったすべての解を出力
 
 # ソルバの生成
 solver = Solver(client)
@@ -72,8 +72,9 @@ row_constraints = [
 constraints = sum(row_constraints)
 
 # モデル
-# model = cost + constraints
-model = cost
+model = cost + 10*constraints
+# model = cost
+# model = constraints
 
 # ソルバ起動
 result = solver.solve(model)
@@ -84,12 +85,15 @@ if len(result) == 0:
 energy = result[0].energy
 values = result[0].values
 q_values = decode_solution(q, values)
-    
+
+##################################################################################
+# 結果の表示   
 print(f"エネルギー: {energy}")
 
 for j in range(ngrp):
     print(f"グループ {grps[j]} の教員数: {sum_poly([q_values[i][j] * teachers[i] for i in range(nlab)])}, 学生数: {sum_poly([q_values[i][j] * students[i] for i in range(nlab)])}")
 print()
+print("各グループの研究室の表示")
 for j in range(ngrp):
     print(f"グループ {grps[j]} の教員: ", end="")
     for i in range(nlab):
@@ -97,5 +101,6 @@ for j in range(ngrp):
             print(labs[i], ", ", end="")
     print()
 print()
+print("制約の確認（研究室が一度ずつ現れているか）")
 for i in range(nlab):
     print(f"{labs[i]} : {sum_poly([q_values[i][j] for j in range(ngrp)])}")
