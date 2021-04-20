@@ -95,15 +95,15 @@ print(f"エネルギー: {energy}")
 
 for j in range(ngrp):
     print(f"グループ {grps[j]} の教員数: {sum_poly([q_values[i][j] * nteachers[i] for i in range(nlab)])}, 学生数: {sum_poly([q_values[i][j] * nstudents[i] for i in range(nlab)])}")
-print()
+print("\n")
 print("各グループの研究室の表示")
 for j in range(ngrp):
     print(f"グループ {grps[j]} の教員: ", end="")
     for i in range(nlab):
         if (q_values[i][j] == 1):
             print(labs[i], ", ", end="")
-    print()
-print()
+    print("\n")
+print("\n")
 print("制約の確認（研究室が一度ずつ現れているか）")
 for i in range(nlab):
     print(f"{labs[i]} : {sum_poly([q_values[i][j] for j in range(ngrp)])}")
