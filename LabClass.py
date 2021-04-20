@@ -68,10 +68,11 @@ row_constraints = [
 constraints = sum(row_constraints)
 
 # モデル
-model = cost + 10*constraints
+model = cost + 5*constraints
 
 # ソルバの生成
 solver = Solver(client)
+# solver.filter_solution = False  # 実行可能解以外をフィルタリングしない
 
 # ソルバ起動
 result = solver.solve(model)
