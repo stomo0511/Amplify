@@ -43,6 +43,14 @@ ngrp = len(grps)   # グループ数
 # QUBO変数の生成: nlab x ngrp
 q = gen_symbols(BinaryPoly, nlab, ngrp)
 
+# 幹事研究室の指定
+# CS1: Ando(0), CS2: Kinoshita(13), CS3: Watanabe(9), CS4: Toyoura(1)
+# （上のカッコ内は研究室インデックス）
+q[0][0]  = BinaryPoly(1)
+q[13][1] = BinaryPoly(1)
+q[9][2]  = BinaryPoly(1)
+q[1][3]  = BinaryPoly(1)
+
 # 研究室の教員数
 T = [
     sum_poly( [q[i][j] * nteachers[i] for i in range(nlab)] ) for j in range(ngrp)
@@ -95,15 +103,15 @@ print(f"エネルギー: {energy}")
 
 for j in range(ngrp):
     print(f"グループ {grps[j]} の教員数: {sum_poly([q_values[i][j] * nteachers[i] for i in range(nlab)])}, 学生数: {sum_poly([q_values[i][j] * nstudents[i] for i in range(nlab)])}")
-print("\n")
+print()
 print("各グループの研究室の表示")
 for j in range(ngrp):
     print(f"グループ {grps[j]} の教員: ", end="")
     for i in range(nlab):
         if (q_values[i][j] == 1):
             print(labs[i], ", ", end="")
-    print("\n")
-print("\n")
+    print()
+print()
 print("制約の確認（研究室が一度ずつ現れているか）")
 for i in range(nlab):
     print(f"{labs[i]} : {sum_poly([q_values[i][j] for j in range(ngrp)])}")
