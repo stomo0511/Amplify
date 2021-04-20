@@ -1,4 +1,3 @@
-import numpy as np
 from amplify import (
     BinaryPoly,
     BinaryQuadraticModel,
@@ -29,11 +28,11 @@ nlab = len(labs)  # 研究室数
 
 # 研究室教員数
 nteachers = [1, 1, 1, 2, 1, 1, 1, 1, 2, 1, 2, 1, 2, 1, 1]
-assert nlab == len(nteachers), '研究室数と教員数配列の長さが違う'
+assert nlab == len(nteachers), "研究室数と教員数配列の長さが違う"
 
 # 研究室学生数
 nstudents = [4, 5, 4, 3, 3, 2, 4, 4, 4, 4, 5, 3, 4, 3, 3]
-assert nlab == len(nstudents), '研究室数と学生数配列の長さが違う'
+assert nlab == len(nstudents), "研究室数と学生数配列の長さが違う"
 
 # グループ名
 grps = ["CS1", "CS2", "CS3", "CS4"]
@@ -43,18 +42,14 @@ ngrp = len(grps)   # グループ数
 # QUBO変数の生成: nlab x ngrp
 q = gen_symbols(BinaryPoly, nlab, ngrp)
 
-# 研究室の教員数
-T = [
-    sum_poly( [q[i][j] * nteachers[i] for i in range(nlab)] ) for j in range(ngrp)
-]
+# グループ内の教員数
+T = [sum_poly( [q[i][j] * nteachers[i] for i in range(nlab)] ) for j in range(ngrp)]
 
-# 研究室の学生数
-S = [
-    sum_poly( [q[i][j] * nstudents[i] for i in range(nlab)] ) for j in range(ngrp)
-]
+# グループ内の学生数
+S = [sum_poly( [q[i][j] * nstudents[i] for i in range(nlab)] ) for j in range(ngrp)]
 
 ##################################################################################
-# コスト関数：グループの学生数、教員数が等しいか？
+# コスト関数：各グループの学生数、教員数が等しいか？
 cost = sum_poly(
     ngrp,
     lambda j: (S[j] - S[(j+1) % ngrp])**2
