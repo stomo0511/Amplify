@@ -13,6 +13,7 @@ from amplify.constraint import (
 )
 from amplify.client import FixstarsClient
 
+##################################################################################
 # クライアント設定
 client = FixstarsClient()
 client.token = "jtSrmOum5m4eTuMEKDbrBekiOqa6nkCg"
@@ -20,22 +21,19 @@ client.parameters.timeout = 5000  # タイムアウト5秒
 client.parameters.outputs.duplicate = True  # 同じエネルギー値の解を列挙するオプション
 client.parameters.outputs.num_outputs = 0   # 見つかったすべての解を出力
 
-# ソルバの生成
-solver = Solver(client)
-
 ##################################################################################
 # 定数、変数の宣言
 # 研究室名
 labs = ["Ando", "Toyoura", "Mao", "Iwanuma", "Go", "Takahashi", "Omata", "Ozawa", "Ohbuchi", "Watanabe", "Nabeshima", "Hattori", "Fukumoto", "Kinoshita", "Suzuki"]
-nlab = len(labs)
+nlab = len(labs)  # 研究室数
 
 # 研究室教員数
-teachers = [1, 1, 1, 2, 1, 1, 1, 1, 2, 1, 2, 1, 2, 1, 1]
-assert nlab == len(teachers), '研究室数と教員数配列の長さが違う'
+nteachers = [1, 1, 1, 2, 1, 1, 1, 1, 2, 1, 2, 1, 2, 1, 1]
+assert nlab == len(nteachers), '研究室数と教員数配列の長さが違う'
 
 # 研究室学生数
-students = [4, 5, 4, 3, 3, 2, 4, 4, 4, 4, 5, 3, 4, 3, 3]
-assert nlab == len(students), '研究室数と学生数配列の長さが違う'
+nstudents = [4, 5, 4, 3, 3, 2, 4, 4, 4, 4, 5, 3, 4, 3, 3]
+assert nlab == len(nstudents), '研究室数と学生数配列の長さが違う'
 
 # グループ名
 grps = ["CS1", "CS2", "CS3", "CS4"]
@@ -47,19 +45,22 @@ q = gen_symbols(BinaryPoly, nlab, ngrp)
 
 # 研究室の教員数
 T = [
-    sum_poly( [q[i][j] * teachers[i] for i in range(nlab)] ) for j in range(ngrp)
+    sum_poly( [q[i][j] * nteachers[i] for i in range(nlab)] ) for j in range(ngrp)
 ]
 
 # 研究室の学生数
 S = [
-    sum_poly( [q[i][j] * students[i] for i in range(nlab)] ) for j in range(ngrp)
+    sum_poly( [q[i][j] * nstudents[i] for i in range(nlab)] ) for j in range(ngrp)
 ]
 
 ##################################################################################
-# コスト関数：グループの学生数が等しいか？
+# コスト関数：グループの学生数、教員数が等しいか？
 cost = sum_poly(
     ngrp,
     lambda j: (S[j] - S[(j+1) % ngrp])**2
+) + sum_poly(
+    ngrp,
+    lambda j: (T[j] - T[(j+1) % ngrp])**2   
 )
 
 ##################################################################################
@@ -73,12 +74,14 @@ constraints = sum(row_constraints)
 
 # モデル
 model = cost + 10*constraints
-# model = cost
-# model = constraints
+
+# ソルバの生成
+solver = Solver(client)
 
 # ソルバ起動
 result = solver.solve(model)
 
+# 解が見つからないときのエラー出力
 if len(result) == 0:
     raise RuntimeError("Any one of constraints is not satisfied.")
 
@@ -91,7 +94,7 @@ q_values = decode_solution(q, values)
 print(f"エネルギー: {energy}")
 
 for j in range(ngrp):
-    print(f"グループ {grps[j]} の教員数: {sum_poly([q_values[i][j] * teachers[i] for i in range(nlab)])}, 学生数: {sum_poly([q_values[i][j] * students[i] for i in range(nlab)])}")
+    print(f"グループ {grps[j]} の教員数: {sum_poly([q_values[i][j] * nteachers[i] for i in range(nlab)])}, 学生数: {sum_poly([q_values[i][j] * nstudents[i] for i in range(nlab)])}")
 print()
 print("各グループの研究室の表示")
 for j in range(ngrp):
