@@ -15,6 +15,11 @@ from amplify.constraint import (
 from amplify.client import FixstarsClient
 import random
 
+# クライアント設定
+client = FixstarsClient()
+client.token = "jtSrmOum5m4eTuMEKDbrBekiOqa6nkCg"
+client.parameters.timeout = 5000  # タイムアウト5秒
+
 def gen_random_tsp(ncity: int):
     # 座標
     locations = np.random.uniform(size=(ncity, 2))
@@ -61,11 +66,6 @@ q[0][0] = BinaryPoly(1)
 for i in range(1, ncity):
     q[0][i] = BinaryPoly(0)
     q[i][0] = BinaryPoly(0)
-
-# クライアント設定
-client = FixstarsClient()
-client.token = "jtSrmOum5m4eTuMEKDbrBekiOqa6nkCg"
-client.parameters.timeout = 5000  # タイムアウト5秒
 
 ##############################################################
 # コスト関数（修正版）
@@ -127,10 +127,20 @@ d_max_all = max(distances.max(axis=1) - d_min)
 
 model = cost + constraints * d_max_all  # 論理模型オブジェクト
 
-print(type(cost))
-print(type(constraints))
-print(type(model))
-print(model.)
+# print(type(cost))
+# print(type(constraints))
+# print(type(model))
+# print(model.num_input_vars)
+# print(model.num_logical_vars)
+# print(type(model.logical_model_poly))
+# print(model.logical_model_poly)
+
+pols = model.logical_model_poly
+impact = pols.replace_all({0:1, 1:1, 2:1, 3:1, 4:1, 5:1, 6:1, 7:1, 8:1})
+print(impact)
+impact = pols.replace_all({0:0, 1:0, 2:1, 3:1, 4:1, 5:1, 6:1, 7:1, 8:1})
+print(impact)
+
 # ここまで定式化
 ##############################################################
 # ソルバの生成
@@ -146,6 +156,7 @@ energy, values = result[0].energy, result[0].values
 
 # 結果のデコード
 q_values = decode_solution(q, values, 1)
+print(q_values)
 
 # 移動順の生成
 route = np.where(np.array(q_values) == 1)[1]
