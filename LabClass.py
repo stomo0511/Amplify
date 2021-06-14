@@ -77,7 +77,7 @@ q2020[labs.index("Takahashi")][grps.index("CS1")] = BinaryPoly(1)
 q2020[labs.index("Fukumoto")][grps.index("CS1")] = BinaryPoly(1)
 q2020[labs.index("Toyoura")][grps.index("CS1")] = BinaryPoly(1)
 
-# CS2: Go, Ozawa, Mao, Ohbushi
+# CS2: Go, Ozawa, Mao, Ohbuchi
 q2020[labs.index("Go")][grps.index("CS2")] = BinaryPoly(1)
 q2020[labs.index("Ozawa")][grps.index("CS2")] = BinaryPoly(1)
 q2020[labs.index("Mao")][grps.index("CS2")] = BinaryPoly(1)
