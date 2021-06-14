@@ -4,8 +4,8 @@ from amplify.client import FixstarsClient
 
 # クライアントの設定
 client = FixstarsClient()               # Fixstars Optigan
-client.parameters.timeout = 1000        # タイムアウト1秒   
-client.token = "jtSrmOum5m4eTuMEKDbrBekiOqa6nkCg"
+client.parameters.timeout = 1000        # タイムアウト1秒
+client.token = "i5G6Ei3DKlGv2n6hsWBSBzWrmffLN4vn"  #20210011まで有効
 client.parameters.outputs.duplicate = True  # 同じエネルギー値の解を列挙するオプション
 client.parameters.outputs.num_outputs = 0   # 見つかったすべての解を出力
 

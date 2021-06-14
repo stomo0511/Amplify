@@ -17,7 +17,7 @@ import random
 
 # クライアント設定
 client = FixstarsClient()
-client.token = "jtSrmOum5m4eTuMEKDbrBekiOqa6nkCg"
+client.token = "i5G6Ei3DKlGv2n6hsWBSBzWrmffLN4vn"  #20210011まで有効
 client.parameters.timeout = 5000  # タイムアウト5秒
 
 def gen_random_tsp(ncity: int):
