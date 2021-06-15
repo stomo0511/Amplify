@@ -15,8 +15,8 @@ from amplify.client import FixstarsClient
 ##################################################################################
 # クライアント設定
 client = FixstarsClient()
-client.token = "i5G6Ei3DKlGv2n6hsWBSBzWrmffLN4vn"  #20210011まで有効
-client.parameters.timeout = 5000  # タイムアウト5秒
+client.token = "i5G6Ei3DKlGv2n6hsWBSBzWrmffLN4vn"  #20210911まで有効
+client.parameters.timeout = 10000  # タイムアウト10秒
 client.parameters.outputs.duplicate = True  # 同じエネルギー値の解を列挙するオプション
 client.parameters.outputs.num_outputs = 0   # 見つかったすべての解を出力
 
