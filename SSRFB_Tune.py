@@ -1,104 +1,87 @@
-import csv
-import pprint
-# from amplify import (
-#     BinaryPoly,
-#     sum_poly,
-#     gen_symbols,
-#     Solver,
-#     decode_solution,
-# )
-# from amplify.constraint import (
-#     equal_to,
-# )
-# from amplify.client import FixstarsClient
+from amplify import (
+    BinaryPoly,
+    sum_poly,
+    gen_symbols,
+    Solver,
+    decode_solution,
+)
+from amplify.constraint import (
+    equal_to,
+)
+from amplify.client import FixstarsClient
 
+import pandas as pd
+import numpy as np
 
-##################################################################################
-# クライアント設定
-# client = FixstarsClient()
-# client.token = "i5G6Ei3DKlGv2n6hsWBSBzWrmffLN4vn"  #20210911まで有効
-# client.parameters.timeout = 5000  # タイムアウト5秒
-# client.parameters.outputs.duplicate = True  # 同じエネルギー値の解を列挙するオプション
-# client.parameters.outputs.num_outputs = 0   # 見つかったすべての解を出力
-
-##################################################################################
+####################################################
 # データファイルの読み込み
 # (nb, ib, time)
-with open('test.csv', 'r') as file: 
-    reader = csv.reader(file)
-    for row in reader:
-        print(row)
+data = pd.read_csv('M1_NoFlush.csv', skipinitialspace=True)
 
+# pandas.Series -> list へ変換
+nb = data.nb.values       # タイルサイズ
+ib = data.ib.values       # 内部ブロック幅
+time = data.time.values   # 実行時間
 
-# ##################################################################################
-# # 定数、変数の宣言
+# 正規化速度 gflops
+gflops = nb**3 / time / 10**9
+data.insert(len(data.columns), 'gflops', gflops)
 
+####################################################
+# 定数設定
+ndat = len(nb)     # データ数
+ncan = 8           # パラメータペア数
 
-# ##################################################################################
-# # QUBO変数の生成: nlab x ngrp
-# q = gen_symbols(BinaryPoly, nlab, ngrp)
+####################################################
+# クライアント設定
+client = FixstarsClient()
+client.token = "i5G6Ei3DKlGv2n6hsWBSBzWrmffLN4vn"  #20210911まで有効
+client.parameters.timeout = 10000  # タイムアウト10秒
+client.parameters.outputs.duplicate = True  # 同じエネルギー値の解を列挙するオプション
+client.parameters.outputs.num_outputs = 0   # 見つかったすべての解を出力
 
+####################################################
+# バイナリ変数の生成
+q = gen_symbols(BinaryPoly, ndat)
 
-# ##################################################################################
-# # コスト関数：
-# cost = sum_poly(
-#     ngrp,
-#     lambda j: (S[j] - S[(j+1) % ngrp])**2
-# ) + sum_poly(
-#     ngrp,
-#     lambda j: (T[j] - T[(j+1) % ngrp])**2   
-# )
+####################################################
+# コスト関数：gflops 値の総和
+cost = sum_poly( [-q[i] * gflops[i] for i in range(ndat)] )
 
+####################################################
+# 制約関数： "1"の変数の数 = ncan
+const = equal_to( sum_poly( [q[i] for i in range(ndat)] ), ncan)
 
-# ##################################################################################
-# # 制約関数：
+####################################################
+# モデル
+model = cost + 5*const
 
-# ##################################################################################
-# # 行（研究室）に対する制約： one-hot制約（1つの研究室が属するグループは1つだけ）
-# row_constraints = [
-#     equal_to(sum_poly([q[i][j] for j in range(ngrp)]), 1) for i in range(nlab)
-# ]
+####################################################
+# ソルバの生成、起動
+solver = Solver(client)
+result = solver.solve(model)
 
-# ##################################################################################
-# # 制約関数
-# constraints = sum(row_constraints)
+# 解が見つからないときのエラー出力
+if len(result) == 0:
+    raise RuntimeError("Any one of constraints is not satisfied.")
 
-# # モデル
-# model = cost + 5*constraints
+energy = result[0].energy
+values = result[0].values
+q_values = decode_solution(q, values)
 
-# # ソルバの生成
-# solver = Solver(client)
-# # solver.filter_solution = False  # 実行可能解以外をフィルタリングしない
+####################################################
+# 結果の表示
+print(f"energy = {energy}")
 
-# ##################################################################################
-# # ソルバ起動
-# result = solver.solve(model)
-
-# # 解が見つからないときのエラー出力
-# if len(result) == 0:
-#     raise RuntimeError("Any one of constraints is not satisfied.")
-
-# energy = result[0].energy
-# values = result[0].values
-# q_values = decode_solution(q, values)
-
-# ##################################################################################
-# # 結果の表示   
-# print(f"エネルギー: {energy}")
-
-# for j in range(ngrp):
-#     print(f"グループ {grps[j]} の教員数: {sum_poly([q_values[i][j] * nteachers[i] for i in range(nlab)])}, 学生数: {sum_poly([q_values[i][j] * nstudents[i] for i in range(nlab)])}")
-# print()
-
-# print("各グループの研究室の表示")
-# for j in range(ngrp):
-#     print(f"グループ {grps[j]} の教員: ", end="")
-#     for i in range(nlab):
-#         if (q_values[i][j] == 1):
-#             print(labs[i], ", ", end="")
-#     print()
-# print()
-
-# # print("制約の確認（研究室が一度ずつ現れているか）")
-# # for i in range(nlab):
-# #     print(f"{labs[i]} : {sum_poly([q_values[i][j] for j in range(ngrp)])}")
+for i in range(ndat):
+    if (q_values[i] == 1):
+        print(nb[i], ", ", end="")
+print()
+for i in range(ndat):
+    if (q_values[i] == 1):
+        print(gflops[i], ", ", end="")
+print()
+for i in range(ndat):
+    if (q_values[i] == 1):
+        print(ib[i], ", ", end="")
+print()
