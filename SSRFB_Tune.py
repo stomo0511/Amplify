@@ -16,21 +16,26 @@ import numpy as np
 ####################################################
 # データファイルの読み込み
 # (nb, ib, time)
-data = pd.read_csv('M1_NoFlush.csv', skipinitialspace=True)
+data = pd.read_csv('Calc_MaxIB.csv', skipinitialspace=True)
 
-# pandas.Series -> list へ変換
-nb = data.nb.values       # タイルサイズ
-ib = data.ib.values       # 内部ブロック幅
-time = data.time.values   # 実行時間
-
-# 正規化速度 gflops
-gflops = nb**3 / time / 10**9
-data.insert(len(data.columns), 'gflops', gflops)
+nb = data.nb.values           # タイルサイズ
+ib = data.ib.values           # 内部ブロック幅
+gflops = data.gflops.values   # 正規化速度
 
 ####################################################
 # 定数設定
 ndat = len(nb)     # データ数
 ncan = 8           # パラメータペア数
+
+nb_min = min(nb)
+nb_max = max(nb)
+step = (nb_max - nb_min) / ncan
+
+# 等間隔点
+equivp = [nb_min + step*(i+1) for i in range(ncan)]
+
+# 等間隔点と nb の距離
+dist = [[ np.sqrt((equivp[i] - nb[j])**2) for j in range(ndat)] for i in range(ncan) ]
 
 ####################################################
 # クライアント設定
@@ -45,16 +50,21 @@ client.parameters.outputs.num_outputs = 0   # 見つかったすべての解を�
 q = gen_symbols(BinaryPoly, ndat)
 
 ####################################################
-# コスト関数：gflops 値の総和
-cost = sum_poly( [-q[i] * gflops[i] for i in range(ndat)] )
+# コスト関数1：gflops 値の総和
+total_g = sum_poly( q*gflops*(-1) )
+
+####################################################
+# コスト関数2：nb等間隔点からの距離
+equiv_d = sum_poly( [dist[0][j] * q[j] for j in range(ndat)] ) + sum_poly( [dist[1][j] * q[j] for j in range(ndat)] ) + sum_poly( [dist[2][j] * q[j] for j in range(ndat)] )
 
 ####################################################
 # 制約関数： "1"の変数の数 = ncan
-const = equal_to( sum_poly( [q[i] for i in range(ndat)] ), ncan)
+const = equal_to( sum_poly(q), ncan )
 
 ####################################################
 # モデル
-model = cost + 5*const
+# model = 10*total_g + equiv_d + 50*const
+model = 10*total_g + 50*const
 
 ####################################################
 # ソルバの生成、起動
