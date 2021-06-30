@@ -16,7 +16,7 @@ import numpy as np
 ####################################################
 # データファイルの読み込み
 # (nb, ib, time)
-data = pd.read_csv('Calc_MaxIB.csv', skipinitialspace=True)
+data = pd.read_csv("Calc_MaxIB.csv", skipinitialspace=True)
 
 nb = data.nb.values           # タイルサイズ
 ib = data.ib.values           # 内部ブロック幅
