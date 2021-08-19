@@ -30,6 +30,7 @@ ncan = 8           # パラメータペア数
 nb_min = min(nb)
 nb_max = max(nb)
 step = (nb_max - nb_min) / ncan
+# print(f"nb_min = {nb_min}, nb_max = {nb_max}, step = {step}")
 
 # 等間隔点
 equivp = [nb_min + step*(i+1) for i in range(ncan)]
