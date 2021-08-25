@@ -16,7 +16,7 @@ import numpy as np
 ####################################################
 # データファイルの読み込み
 # (nb, ib, time)
-data = pd.read_csv("Calc_MaxIB.csv", skipinitialspace=True)
+data = pd.read_csv("test_MaxIB.csv", skipinitialspace=True)
 
 nb = data.nb.values           # タイルサイズ
 ib = data.ib.values           # 内部ブロック幅
@@ -25,24 +25,18 @@ gflops = data.gflops.values   # 正規化速度
 ####################################################
 # 定数設定
 ndat = len(nb)     # データ数
-ncan = 8           # パラメータペア数
+ncan = 6           # パラメータペア数
 
 nb_min = min(nb)
 nb_max = max(nb)
 step = (nb_max - nb_min) / ncan
 # print(f"nb_min = {nb_min}, nb_max = {nb_max}, step = {step}")
 
-# 等間隔点
-equivp = [nb_min + step*(i+1) for i in range(ncan)]
-
-# 等間隔点と nb の距離
-dist = [[ np.sqrt((equivp[i] - nb[j])**2) for j in range(ndat)] for i in range(ncan) ]
-
 ####################################################
 # クライアント設定
 client = FixstarsClient()
 client.token = "i5G6Ei3DKlGv2n6hsWBSBzWrmffLN4vn"  #20210911まで有効
-client.parameters.timeout = 10000  # タイムアウト10秒
+client.parameters.timeout = 5000  # タイムアウト5秒
 client.parameters.outputs.duplicate = True  # 同じエネルギー値の解を列挙するオプション
 client.parameters.outputs.num_outputs = 0   # 見つかったすべての解を出力
 
@@ -51,25 +45,29 @@ client.parameters.outputs.num_outputs = 0   # 見つかったすべての解を�
 q = gen_symbols(BinaryPoly, ndat)
 
 ####################################################
-# コスト関数1：gflops 値の総和
-total_g = sum_poly( q*gflops*(-1) )
-
-####################################################
-# コスト関数2：nb等間隔点からの距離
-equiv_d = sum_poly( [dist[0][j] * q[j] for j in range(ndat)] ) + sum_poly( [dist[1][j] * q[j] for j in range(ndat)] ) + sum_poly( [dist[2][j] * q[j] for j in range(ndat)] )
-
-####################################################
 # 制約関数： "1"の変数の数 = ncan
 const = equal_to( sum_poly(q), ncan )
 
 ####################################################
-# モデル
-# model = 10*total_g + equiv_d + 50*const
-model = 10*total_g + 50*const
+# コスト関数：gflops 値の総和
+total_g = sum_poly( q*gflops*(-1) )
 
+####################################################
+# コスト関数：2点間の距離
+two_d = - sum_poly([q[i]*q[j]*((nb[i] - nb[j]) / (nb_max - nb_min))**2 for i in range(ndat) for j in range(ndat)])
+
+####################################################
+# モデル
+# model = 10*total_g + 50*const
+# model = 10*total_g + two_d + 50*const
+model = 5*total_g + 2*two_d + 50*const
+# model = two_d + 50*const
+
+####################################################################################
 ####################################################
 # ソルバの生成、起動
 solver = Solver(client)
+solver.filter_solution = False   # 制約を満たさない解を許す
 result = solver.solve(model)
 
 # 解が見つからないときのエラー出力
@@ -90,9 +88,13 @@ for i in range(ndat):
 print()
 for i in range(ndat):
     if (q_values[i] == 1):
-        print(gflops[i], ", ", end="")
+        print(ib[i], ", ", end="")
 print()
 for i in range(ndat):
     if (q_values[i] == 1):
-        print(ib[i], ", ", end="")
+        print('{:.3f}'.format(gflops[i]), ", ", end="")
 print()
+
+print(result[0].is_feasible)
+if result[0].is_feasible == False:
+    print(model.check_constraints(result[0].values))
