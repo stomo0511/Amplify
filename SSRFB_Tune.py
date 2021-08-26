@@ -22,14 +22,16 @@ nb = data.nb.values            # タイルサイズ
 ib = data.ib.values            # 内部ブロック幅
 gflops = data.gflops.values    # 正規化速度
 
-
+ndat = len(nb)                 # データ数
+ncan = 4                       # パラメータペア数
 
 ####################################################
-# 定数設定
-ndat = len(nb)     # データ数
-ncan = 4           # パラメータペア数
+# nb 等間隔点
+step = (max(nb) - min(nb)) / ncan
+equivp = [min(nb) + step*(i+1) for i in range(ncan)]
 
-nnb = nb / (max(nb) - min(nb)) # 正規化したnb
+# 等間隔点と nb の距離
+dist = [[ ((equivp[i] - nb[j])**2)**0.5 for j in range(ndat)] for i in range(ncan) ]
 
 ####################################################
 # クライアント設定
@@ -52,7 +54,8 @@ Const0 = equal_to( sum_poly(q), ncan )
 Cost0 = sum_poly( q*gflops*(-1) )
 
 ####################################################
-# コスト関数：隣の点との距離を最大にする
+# コスト関数1： nb 等間隔点からの距離が最小
+Cost1 = sum_poly([ dist[i][j] * q[j] for i in range(ncan) for j in range(ndat) ])
 # two_d = - sum_poly([q[i]*q[j]*((nb[i] - nb[j]) / (nb_max - nb_min))**2 for i in range(ndat) for j in range(ndat)])
 
 # for i in range(ndat-1):
@@ -60,7 +63,7 @@ Cost0 = sum_poly( q*gflops*(-1) )
 
 ####################################################
 # モデル
-model = Cost0 + 10*Const0
+model = 100*Cost0 + Cost1 + 200*Const0
 
 ###################################################
 # ソルバの生成、起動
