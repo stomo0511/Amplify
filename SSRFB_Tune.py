@@ -18,19 +18,18 @@ import numpy as np
 # (nb, ib, time)
 data = pd.read_csv("test_MaxIB.csv", skipinitialspace=True)
 
-nb = data.nb.values           # タイルサイズ
-ib = data.ib.values           # 内部ブロック幅
-gflops = data.gflops.values   # 正規化速度
+nb = data.nb.values            # タイルサイズ
+ib = data.ib.values            # 内部ブロック幅
+gflops = data.gflops.values    # 正規化速度
+
+
 
 ####################################################
 # 定数設定
 ndat = len(nb)     # データ数
-ncan = 6           # パラメータペア数
+ncan = 4           # パラメータペア数
 
-nb_min = min(nb)
-nb_max = max(nb)
-step = (nb_max - nb_min) / ncan
-# print(f"nb_min = {nb_min}, nb_max = {nb_max}, step = {step}")
+nnb = nb / (max(nb) - min(nb)) # 正規化したnb
 
 ####################################################
 # クライアント設定
@@ -45,26 +44,25 @@ client.parameters.outputs.num_outputs = 0   # 見つかったすべての解を�
 q = gen_symbols(BinaryPoly, ndat)
 
 ####################################################
-# 制約関数： "1"の変数の数 = ncan
-const = equal_to( sum_poly(q), ncan )
+# 制約関数0： "1"の変数の数 = ncan
+Const0 = equal_to( sum_poly(q), ncan )
 
 ####################################################
-# コスト関数：gflops 値の総和
-total_g = sum_poly( q*gflops*(-1) )
+# コスト関数0：gflops 値の総和
+Cost0 = sum_poly( q*gflops*(-1) )
 
 ####################################################
-# コスト関数：2点間の距離
-two_d = - sum_poly([q[i]*q[j]*((nb[i] - nb[j]) / (nb_max - nb_min))**2 for i in range(ndat) for j in range(ndat)])
+# コスト関数：隣の点との距離を最大にする
+# two_d = - sum_poly([q[i]*q[j]*((nb[i] - nb[j]) / (nb_max - nb_min))**2 for i in range(ndat) for j in range(ndat)])
+
+# for i in range(ndat-1):
+#     print( i, ", ", i+1, ", ", nb[i] - nb[i+1])
 
 ####################################################
 # モデル
-# model = 10*total_g + 50*const
-# model = 10*total_g + two_d + 50*const
-model = 5*total_g + 2*two_d + 50*const
-# model = two_d + 50*const
+model = Cost0 + 10*Const0
 
-####################################################################################
-####################################################
+###################################################
 # ソルバの生成、起動
 solver = Solver(client)
 solver.filter_solution = False   # 制約を満たさない解を許す
@@ -84,17 +82,9 @@ print(f"energy = {energy}")
 
 for i in range(ndat):
     if (q_values[i] == 1):
-        print(nb[i], ", ", end="")
-print()
-for i in range(ndat):
-    if (q_values[i] == 1):
-        print(ib[i], ", ", end="")
-print()
-for i in range(ndat):
-    if (q_values[i] == 1):
-        print('{:.3f}'.format(gflops[i]), ", ", end="")
-print()
+        print( "(", nb[i], ", ", ib[i], ") : ", "{:.3f}".format(gflops[i]) )
 
+# 制約を満たした解か？
 print(result[0].is_feasible)
 if result[0].is_feasible == False:
     print(model.check_constraints(result[0].values))
