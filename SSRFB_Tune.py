@@ -5,9 +5,7 @@ from amplify import (
     Solver,
     decode_solution,
 )
-from amplify.constraint import (
-    equal_to,
-)
+from amplify.constraint import equal_to
 from amplify.client import FixstarsClient
 
 import pandas as pd
@@ -16,22 +14,35 @@ import numpy as np
 ####################################################
 # データファイルの読み込み
 # (nb, ib, time)
-data = pd.read_csv("test_MaxIB.csv", skipinitialspace=True)
+data = pd.read_csv("Odys_MaxIB.csv", skipinitialspace=True)
 
 nb = data.nb.values            # タイルサイズ
 ib = data.ib.values            # 内部ブロック幅
 gflops = data.gflops.values    # 正規化速度
 
 ndat = len(nb)                 # データ数
-ncan = 4                       # パラメータペア数
+ncan = 8                       # パラメータペア数
 
 ####################################################
 # nb 等間隔点
-step = (max(nb) - min(nb)) / ncan
-equivp = [min(nb) + step*(i+1) for i in range(ncan)]
+nnb = nb / (max(nb) - min(nb)) # nb の正規化
+step = (max(nnb) - min(nnb)) / ncan  # 間隔
+equivp = [min(nnb) + step*(i+1) for i in range(ncan)]  # 等間隔点
 
 # 等間隔点と nb の距離
-dist = [[ ((equivp[i] - nb[j])**2)**0.5 for j in range(ndat)] for i in range(ncan) ]
+dist = [[ ((equivp[i] - nnb[j])**2)**0.5 for j in range(ndat)] for i in range(ncan) ]
+
+# 等間隔に収まる添字の数
+c_nb = [0 for i in range(ncan)]
+
+# min(nb) から min(nb)+step に収まる nb の個数
+for i in range(ncan):
+    low_nb = min(nnb) + i*step
+    up_nb  = min(nnb) + (i+1)*step
+    for j in range(ndat):
+        if nnb[j] > low_nb and nnb[j] <= up_nb:
+            c_nb[i] += 1
+c_nb[0] += 1    # nnb = 下限 がカウントできてないため必要
 
 ####################################################
 # クライアント設定
@@ -46,24 +57,30 @@ client.parameters.outputs.num_outputs = 0   # 見つかったすべての解を�
 q = gen_symbols(BinaryPoly, ndat)
 
 ####################################################
-# 制約関数0： "1"の変数の数 = ncan
-Const0 = equal_to( sum_poly(q), ncan )
-
-####################################################
 # コスト関数0：gflops 値の総和
 Cost0 = sum_poly( q*gflops*(-1) )
 
 ####################################################
 # コスト関数1： nb 等間隔点からの距離が最小
 Cost1 = sum_poly([ dist[i][j] * q[j] for i in range(ncan) for j in range(ndat) ])
-# two_d = - sum_poly([q[i]*q[j]*((nb[i] - nb[j]) / (nb_max - nb_min))**2 for i in range(ndat) for j in range(ndat)])
 
-# for i in range(ndat-1):
-#     print( i, ", ", i+1, ", ", nb[i] - nb[i+1])
+####################################################
+# コスト関数2： 二点間の距離が最大
+Cost2 = - sum_poly( [q[i]*q[j]*((nnb[i] - nnb[j]) )**2 for i in range(ndat) for j in range(ndat)] )
 
 ####################################################
 # モデル
-model = 100*Cost0 + Cost1 + 200*Const0
+model = Cost0
+
+####################################################
+# 制約関数0： "1"の変数の数 = ncan
+# Const0 = equal_to( sum_poly(q), ncan )
+st = 0
+ed = c_nb[0]
+for k in range(ncan):
+    model += equal_to( sum_poly( [ 20*q[i] for i in list(range(st,ed))] ), 20)
+    st += c_nb[k]
+    ed += c_nb[(k+1) % ncan]
 
 ###################################################
 # ソルバの生成、起動
