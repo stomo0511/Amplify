@@ -10,11 +10,13 @@ from amplify.client import FixstarsClient
 
 import pandas as pd
 import numpy as np
+import math
 
 ####################################################
 # データファイルの読み込み
 # (nb, ib, time)
-data = pd.read_csv("Odys_MaxIB.csv", skipinitialspace=True)
+data = pd.read_csv("Tesla_MaxIB.csv", skipinitialspace=True)
+# data = pd.read_csv("test_MaxIB.csv", skipinitialspace=True)
 
 nb = data.nb.values            # タイルサイズ
 ib = data.ib.values            # 内部ブロック幅
@@ -65,22 +67,28 @@ Cost0 = sum_poly( q*gflops*(-1) )
 Cost1 = sum_poly([ dist[i][j] * q[j] for i in range(ncan) for j in range(ndat) ])
 
 ####################################################
-# コスト関数2： 二点間の距離が最大
-Cost2 = - sum_poly( [q[i]*q[j]*((nnb[i] - nnb[j]) )**2 for i in range(ndat) for j in range(ndat)] )
+# コスト関数2： 二点間の距離が最大 -> 両端を選ぶ
+Cost2 = - sum_poly( [q[i]*q[j] * math.fabs(nnb[i] - nnb[j]) for i in range(ndat) for j in range(ndat) if i != j] )
 
 ####################################################
 # モデル
-model = Cost0
+model = Cost0 + Cost2
 
 ####################################################
-# 制約関数0： "1"の変数の数 = ncan
-# Const0 = equal_to( sum_poly(q), ncan )
+# 制約関数0： 等間隔内に一つの変数
 st = 0
 ed = c_nb[0]
 for k in range(ncan):
-    model += equal_to( sum_poly( [ 20*q[i] for i in list(range(st,ed))] ), 20)
+    model += equal_to( sum_poly( [ 10*q[i] for i in list(range(st,ed)) ] ), 10)
     st += c_nb[k]
     ed += c_nb[(k+1) % ncan]
+
+####################################################
+# コスト関数3: 二点間の距離の最小値の和が最大 <- 未完
+# Cost3 = - sum_poly( [q[i]*min([q[j]*math.fabs(nnb[i] - nnb[j]) for j in range(ncan) if j!=i])] for i in range(ncan) )
+# print( min([[math.fabs(nnb[i] - nnb[j]) for j in range(ndat) if j!=i]]) for i in range(ndat) )
+# for i in range(ndat):
+#     print( min( [ math.fabs(nnb[i] - nnb[j]) for j in range(ndat) if j!=i] ) )
 
 ###################################################
 # ソルバの生成、起動
