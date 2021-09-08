@@ -15,8 +15,8 @@ import math
 ####################################################
 # データファイルの読み込み
 # (nb, ib, time)
-data = pd.read_csv("Tesla_MaxIB.csv", skipinitialspace=True)
-# data = pd.read_csv("test_MaxIB.csv", skipinitialspace=True)
+data = pd.read_csv("Odys_MaxIB.csv", skipinitialspace=True)
+# data = pd.read_csv("Odys_MaxIB2.csv", skipinitialspace=True)
 
 nb = data.nb.values            # タイルサイズ
 ib = data.ib.values            # 内部ブロック幅
@@ -49,7 +49,7 @@ c_nb[0] += 1    # nnb = 下限 がカウントできてないため必要
 ####################################################
 # クライアント設定
 client = FixstarsClient()
-client.token = "i5G6Ei3DKlGv2n6hsWBSBzWrmffLN4vn"  #20210911まで有効
+client.token = "YPUHk3Oh0pIVYdwFB43uzcLFkEiq9zDf"  #20211207まで有効
 client.parameters.timeout = 5000  # タイムアウト5秒
 client.parameters.outputs.duplicate = True  # 同じエネルギー値の解を列挙するオプション
 client.parameters.outputs.num_outputs = 0   # 見つかったすべての解を出力
