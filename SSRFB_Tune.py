@@ -11,33 +11,38 @@ from amplify.client import FixstarsClient
 import pandas as pd
 import numpy as np
 import math
+import sys
 
 ####################################################
 # データファイルの読み込み
 # (nb, ib, time)
 data = pd.read_csv("Odys_MaxIB.csv", skipinitialspace=True)
 # data = pd.read_csv("Odys_MaxIB2.csv", skipinitialspace=True)
+# data = pd.read_csv("Odys_MaxIB3.csv", skipinitialspace=True)
 
 nb = data.nb.values            # タイルサイズ
 ib = data.ib.values            # 内部ブロック幅
 gflops = data.gflops.values    # 正規化速度
+ndat = len(nb)                 # データ数 (32〜512まで2刻み -> 241)
 
-ndat = len(nb)                 # データ数
+####################################################
+# 候補ペア数 <- パラメータ
 ncan = 8                       # パラメータペア数
 
 ####################################################
 # nb 等間隔点
-nnb = nb / (max(nb) - min(nb)) # nb の正規化
+nnb = nb / (max(nb) - min(nb))       # nb の正規化
 step = (max(nnb) - min(nnb)) / ncan  # 間隔
-equivp = [min(nnb) + step*(i+1) for i in range(ncan)]  # 等間隔点
+equivp = [min(nnb) + step*(i+1) for i in range(ncan)]  # 等間隔点（ min(nnb)は含まれない ）
 
 # 等間隔点と nb の距離
 dist = [[ ((equivp[i] - nnb[j])**2)**0.5 for j in range(ndat)] for i in range(ncan) ]
 
-# 等間隔に収まる添字の数
+####################################################
+# c_nb: 等間隔に収まる添字の数
 c_nb = [0 for i in range(ncan)]
 
-# min(nb) から min(nb)+step に収まる nb の個数
+# low_nb から up_nb に収まる nnb の個数をカウント
 for i in range(ncan):
     low_nb = min(nnb) + i*step
     up_nb  = min(nnb) + (i+1)*step
@@ -47,12 +52,14 @@ for i in range(ncan):
 c_nb[0] += 1    # nnb = 下限 がカウントできてないため必要
 
 ####################################################
-# クライアント設定
-client = FixstarsClient()
-client.token = "YPUHk3Oh0pIVYdwFB43uzcLFkEiq9zDf"  #20211207まで有効
-client.parameters.timeout = 5000  # タイムアウト5秒
-client.parameters.outputs.duplicate = True  # 同じエネルギー値の解を列挙するオプション
-client.parameters.outputs.num_outputs = 0   # 見つかったすべての解を出力
+# steepness （要素数は1つ少ない）
+stpn = [ (gflops[i+1] - gflops[i]) for i in range(ndat-1) ]
+
+####################################################
+# convex hull
+
+
+sys.exit()
 
 ####################################################
 # バイナリ変数の生成
@@ -71,24 +78,35 @@ Cost1 = sum_poly([ dist[i][j] * q[j] for i in range(ncan) for j in range(ndat) ]
 Cost2 = - sum_poly( [q[i]*q[j] * math.fabs(nnb[i] - nnb[j]) for i in range(ndat) for j in range(ndat) if i != j] )
 
 ####################################################
-# モデル
-model = Cost0 + Cost2
-
-####################################################
-# 制約関数0： 等間隔内に一つの変数
-st = 0
-ed = c_nb[0]
-for k in range(ncan):
-    model += equal_to( sum_poly( [ 10*q[i] for i in list(range(st,ed)) ] ), 10)
-    st += c_nb[k]
-    ed += c_nb[(k+1) % ncan]
-
-####################################################
 # コスト関数3: 二点間の距離の最小値の和が最大 <- 未完
 # Cost3 = - sum_poly( [q[i]*min([q[j]*math.fabs(nnb[i] - nnb[j]) for j in range(ncan) if j!=i])] for i in range(ncan) )
 # print( min([[math.fabs(nnb[i] - nnb[j]) for j in range(ndat) if j!=i]]) for i in range(ndat) )
 # for i in range(ndat):
 #     print( min( [ math.fabs(nnb[i] - nnb[j]) for j in range(ndat) if j!=i] ) )
+
+####################################################
+# モデル
+model = Cost0 + Cost2
+
+####################################################
+# 制約関数0： 等間隔内に一つの変数
+w = 10   # 制約の weight
+st = 0
+ed = c_nb[0]
+for k in range(ncan):
+    model += equal_to( sum_poly( [ w*q[i] for i in list(range(st,ed)) ] ), w)
+    st += c_nb[k]
+    ed += c_nb[(k+1) % ncan]
+
+# model = Cost0 + Cost2 + w * Constraint
+
+####################################################
+# クライアント設定
+client = FixstarsClient()
+client.token = "YPUHk3Oh0pIVYdwFB43uzcLFkEiq9zDf"  #20211207まで有効
+client.parameters.timeout = 5000  # タイムアウト5秒
+client.parameters.outputs.duplicate = True  # 同じエネルギー値の解を列挙するオプション
+client.parameters.outputs.num_outputs = 0   # 見つかったすべての解を出力
 
 ###################################################
 # ソルバの生成、起動
