@@ -16,7 +16,7 @@ import sys
 ####################################################
 # データファイルの読み込み
 # (nb, ib, time)
-data = pd.read_csv("Odys_MaxIB.csv", skipinitialspace=True)
+data = pd.read_csv("Odyssey_MaxIB.csv", skipinitialspace=True)
 # data = pd.read_csv("Odys_MaxIB2.csv", skipinitialspace=True)
 # data = pd.read_csv("Odys_MaxIB3.csv", skipinitialspace=True)
 
@@ -59,7 +59,7 @@ stpn = [ (gflops[i+1] - gflops[i]) for i in range(ndat-1) ]
 # convex hull
 
 
-sys.exit()
+# sys.exit()
 
 ####################################################
 # バイナリ変数の生成
