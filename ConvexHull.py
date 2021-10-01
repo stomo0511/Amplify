@@ -1,4 +1,3 @@
-import math
 from matplotlib import lines
 import numpy as np
 import pandas as pd
