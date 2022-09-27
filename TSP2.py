@@ -17,7 +17,7 @@ import random
 
 # クライアント設定
 client = FixstarsClient()
-client.token = "i5G6Ei3DKlGv2n6hsWBSBzWrmffLN4vn"  #20210011まで有効
+client.token = "rSnIw4H95J8GuAKbvPxzG2PMOCCcFoZD"  #20221-11-27まで有効
 client.parameters.timeout = 5000  # タイムアウト5秒
 
 def gen_random_tsp(ncity: int):
@@ -55,7 +55,7 @@ def show_route(route: list, distances: np.ndarray, locations: np.ndarray):
     return path_length
 
 # 都市数
-ncity = 4
+ncity = 10
 locations, distances = gen_random_tsp(ncity)
 
 # 変数の生成: ncity x nicity
