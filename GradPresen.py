@@ -10,7 +10,7 @@ from amplify.constraint import (
     penalty,
 )
 from amplify.client import FixstarsClient
-
+from collections import OrderedDict
 
 ##################################################################################
 # クライアント設定
@@ -21,47 +21,81 @@ client.parameters.outputs.duplicate = True  # 同じエネルギー値の解を�
 client.parameters.outputs.num_outputs = 0   # 見つかったすべての解を出力
 
 ##################################################################################
-# 定数、変数の宣言
-# 研究室名
-labs = ["Ando", "Toyoura", "Mao", "Iwanuma", "Go", "Takahashi", "Omata", "Ozawa", "Ohbuchi", "Watanabe", "Nabeshima", "Hattori", "Fukumoto", "Kinoshita", "Suzuki"]
-nlab = len(labs)  # 研究室数
-
 # グループ名
 grps = ["ZoomA", "ZoomB"]
-ngrp = len(grps)   # グループ数
-
-# 研究室教員数
-nteachers = [1, 1, 1, 2, 1, 1, 1, 1, 2, 1, 1, 1, 2, 1, 1]
-assert nlab == len(nteachers), "研究室数と教員数配列の長さが違う"
-
-# 研究室学生数
-nstudents = [5, 4, 5, 5, 4, 3, 2, 3, 3, 3, 4, 3, 3, 3, 2]
-assert nlab == len(nstudents), "研究室数と学生数配列の長さが違う"
+ngrps = len(grps)   # グループ数
 
 ##################################################################################
+# 研究室リスト
+# 研究室名: [教員数, 学生数]
+# labs = {
+#     "Ando": [1, 5],
+#     "Mao": [2, 5],
+#     "Iwanuma": [2, 5],
+#     "Go": [1, 4],
+#     "Takahashi": [1, 3],
+#     "Omata": [1, 2],
+#     "Ozawa": [1, 3],
+#     "Ohbuchi": [2, 3],
+#     "Watanabe": [1, 3],
+#     "Nabeshima": [1, 4],
+#     "Hattori": [1, 3],
+#     "Fukumoto": [2, 3],
+#     "Toyoura": [1, 4],
+#     "Suzuki": [1, 2],
+#     "Kinoshita": [1, 3]
+# }
+# nlabs = len(labs)
+
+labs = OrderedDict(
+    [("Ando", [1, 5]),
+    ("Mao", [2, 5]),
+    ("Iwanuma", [2, 5]),
+    ("Go", [1, 4]),
+    ("Takahashi", [1, 3]),
+    ("Omata", [1, 2]),
+    ("Ozawa", [1, 3]),
+    ("Ohbuchi", [2, 3]),
+    ("Watanabe", [1, 3]),
+    ("Nabeshima", [1, 4]),
+    ("Hattori", [1, 3]),
+    ("Fukumoto", [2, 3]),
+    ("Toyoura", [1, 4]),
+    ("Suzuki", [1, 2]),
+    ("Kinoshita", [1, 3])]
+)
+
+nlabs = len(labs)
+
+for name, val in labs.items():
+    print(name, val[0], val[1])
+
+    
+exit()
+##################################################################################
 # QUBO変数の生成: nlab x ngrp
-q = gen_symbols(BinaryPoly, nlab, ngrp)
+q = gen_symbols(BinaryPoly, nlabs, ngrps)
 
 # グループ内の教員数
-T = [sum_poly( [q[i][j] * nteachers[i] for i in range(nlab)] ) for j in range(ngrp)]
+T = [sum_poly( [q[i][j] * i[0] for i in labs.values()] ) for j in range(ngrps)]
 
 # グループ内の学生数
-S = [sum_poly( [q[i][j] * nstudents[i] for i in range(nlab)] ) for j in range(ngrp)]
+S = [sum_poly( [q[i][j] * i[1] for i in labs.values()] ) for j in range(ngrps)]
 
 ##################################################################################
 # コスト関数：各グループの学生数、教員数が等しいか？
 cost = sum_poly(
-    ngrp,
-    lambda j: (S[j] - S[(j+1) % ngrp])**2
+    ngrps,
+    lambda j: (S[j] - S[(j+1) % ngrps])**2
 ) + sum_poly(
-    ngrp,
-    lambda j: (T[j] - T[(j+1) % ngrp])**2   
+    ngrps,
+    lambda j: (T[j] - T[(j+1) % ngrps])**2
 )
 
 ##################################################################################
 # 行（研究室）に対する制約： one-hot制約（1つの研究室が属するグループは1つだけ）
 row_constraints = [
-    equal_to(sum_poly([q[i][j] for j in range(ngrp)]), 1) for i in range(nlab)
+    equal_to(sum_poly([q[i][j] for j in range(ngrps)]), 1) for i in range(nlabs)
 ]
 
 ##################################################################################
@@ -91,21 +125,21 @@ q_values = decode_solution(q, values)
 # 結果の表示   
 print(f"エネルギー: {energy}")
 
-for j in range(ngrp):
+for j in range(ngrps):
     nt = 0
     st = 0
-    for i in range(nlab):
-        nt += q_values[i][j]*nteachers[i]
-        st += q_values[i][j]*nstudents[i]
+    for i in labs.keys():
+        nt += q_values[i][j]*labs[i][0]
+        st += q_values[i][j]*labs[i][1]
     print(f'グループ {grps[j]} の教員数: {nt}, 学生数: {st}')
 print()
 
 print("各グループの研究室の表示")
-for j in range(ngrp):
+for j in range(ngrps):
     print(f"グループ {grps[j]} の教員: ", end="")
-    for i in range(nlab):
+    for i in labs.keys():
         if (q_values[i][j] == 1):
-            print(labs[i], ", ", end="")
+            print(i, ", ", end="")
     print()
 print()
 
