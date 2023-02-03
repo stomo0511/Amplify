@@ -28,59 +28,44 @@ ngrps = len(grps)   # グループ数
 ##################################################################################
 # 研究室リスト
 # 研究室名: [教員数, 学生数]
-# labs = {
-#     "Ando": [1, 5],
-#     "Mao": [2, 5],
-#     "Iwanuma": [2, 5],
-#     "Go": [1, 4],
-#     "Takahashi": [1, 3],
-#     "Omata": [1, 2],
-#     "Ozawa": [1, 3],
-#     "Ohbuchi": [2, 3],
-#     "Watanabe": [1, 3],
-#     "Nabeshima": [1, 4],
-#     "Hattori": [1, 3],
-#     "Fukumoto": [2, 3],
-#     "Toyoura": [1, 4],
-#     "Suzuki": [1, 2],
-#     "Kinoshita": [1, 3]
-# }
-# nlabs = len(labs)
+# わざわざ辞書型としたのは、研究室名、教員数、学生数の組を入力し間違わないため
+labsdict = {
+    "Ando": [1, 5],
+    "Mao": [2, 5],
+    "Iwanuma": [2, 5],
+    "Go": [1, 4],
+    "Takahashi": [1, 3],
+    "Omata": [1, 2],
+    "Ozawa": [1, 3],
+    "Ohbuchi": [2, 3],
+    "Watanabe": [1, 3],
+    "Nabeshima": [1, 4],
+    "Hattori": [1, 3],
+    "Fukumoto": [2, 3],
+    "Toyoura": [1, 4],
+    "Suzuki": [1, 2],
+    "Kinoshita": [1, 3]
+}
+nlabs = len(labsdict)
 
-labs = OrderedDict(
-    [("Ando", [1, 5]),
-    ("Mao", [2, 5]),
-    ("Iwanuma", [2, 5]),
-    ("Go", [1, 4]),
-    ("Takahashi", [1, 3]),
-    ("Omata", [1, 2]),
-    ("Ozawa", [1, 3]),
-    ("Ohbuchi", [2, 3]),
-    ("Watanabe", [1, 3]),
-    ("Nabeshima", [1, 4]),
-    ("Hattori", [1, 3]),
-    ("Fukumoto", [2, 3]),
-    ("Toyoura", [1, 4]),
-    ("Suzuki", [1, 2]),
-    ("Kinoshita", [1, 3])]
-)
+labs = []
+nteachers = []
+nstudents = []
+for name, val in labsdict.items():
+    labs.append(name)
+    nteachers.append(val[0])
+    nstudents.append (val[1])
 
-nlabs = len(labs)
 
-for name, val in labs.items():
-    print(name, val[0], val[1])
-
-    
-exit()
 ##################################################################################
 # QUBO変数の生成: nlab x ngrp
 q = gen_symbols(BinaryPoly, nlabs, ngrps)
 
 # グループ内の教員数
-T = [sum_poly( [q[i][j] * i[0] for i in labs.values()] ) for j in range(ngrps)]
+T = [sum_poly( [q[i][j] * nteachers[i] for i in range(nlabs)] ) for j in range(ngrps)]
 
 # グループ内の学生数
-S = [sum_poly( [q[i][j] * i[1] for i in labs.values()] ) for j in range(ngrps)]
+S = [sum_poly( [q[i][j] * nstudents[i] for i in range(nlabs)] ) for j in range(ngrps)]
 
 ##################################################################################
 # コスト関数：各グループの学生数、教員数が等しいか？
@@ -126,20 +111,15 @@ q_values = decode_solution(q, values)
 print(f"エネルギー: {energy}")
 
 for j in range(ngrps):
-    nt = 0
-    st = 0
-    for i in labs.keys():
-        nt += q_values[i][j]*labs[i][0]
-        st += q_values[i][j]*labs[i][1]
-    print(f'グループ {grps[j]} の教員数: {nt}, 学生数: {st}')
+    print(f"グループ {grps[j]} の教員数: {sum([q_values[i][j] * nteachers[i] for i in range(nlabs)])}, 学生数: {sum([q_values[i][j] * nstudents[i] for i in range(nlabs)])}")
 print()
 
 print("各グループの研究室の表示")
 for j in range(ngrps):
     print(f"グループ {grps[j]} の教員: ", end="")
-    for i in labs.keys():
+    for i in range(nlabs):
         if (q_values[i][j] == 1):
-            print(i, ", ", end="")
+            print(labs[i], ", ", end="")
     print()
 print()
 

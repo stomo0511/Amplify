@@ -129,7 +129,7 @@ q_values = decode_solution(q, values)
 print(f"エネルギー: {energy}")
 
 for j in range(ngrp):
-    print(f"グループ {grps[j]} の教員数: {sum_poly([q_values[i][j] * nteachers[i] for i in range(nlab)])}, 学生数: {sum_poly([q_values[i][j] * nstudents[i] for i in range(nlab)])}")
+    print(f"グループ {grps[j]} の教員数: {sum([q_values[i][j] * nteachers[i] for i in range(nlab)])}, 学生数: {sum([q_values[i][j] * nstudents[i] for i in range(nlab)])}")
 print()
 
 print("各グループの研究室の表示")
