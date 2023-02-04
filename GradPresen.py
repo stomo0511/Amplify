@@ -7,10 +7,8 @@ from amplify import (
 )
 from amplify.constraint import (
     equal_to,
-    penalty,
 )
 from amplify.client import FixstarsClient
-from collections import OrderedDict
 
 ##################################################################################
 # クライアント設定
