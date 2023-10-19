@@ -2,7 +2,6 @@ import numpy as np
 from amplify import (
     gen_symbols,
     BinaryPoly,
-    sum_poly,
     Solver,
     decode_solution,
 )
@@ -82,7 +81,7 @@ block_constraints = [
 ####################################################
 # イジングマシン設定
 client = FixstarsClient()
-client.token = "i5G6Ei3DKlGv2n6hsWBSBzWrmffLN4vn"  #20210911まで有効
+client.token = "GsTUUgM3WjSpAzfeqHR4jWJyUWfzGZJG"  #20240111 まで有効
 client.parameters.timeout = 1000  # タイムアウト1秒
 client.parameters.outputs.duplicate = True  # 同じエネルギー値の解を列挙するオプション
 client.parameters.outputs.num_outputs = 0   # 見つかったすべての解を出力
@@ -109,9 +108,10 @@ if len(results) > 0:
     r = decode_solution(q,results[0].values)
     final = np.zeros(9*9, dtype=int).reshape(9,9)
 
+    # print(r)
     for i in range(9):
         for j in range(9):
-            final[i][j] = r[i][j].index(1) + 1
+            final[i][j] = np.where(r[i][j] == 1)[0][0] + 1
     print_sudoku(final)
 else:
     print("not satisfied")
