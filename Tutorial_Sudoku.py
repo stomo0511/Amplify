@@ -12,7 +12,7 @@ from amplify.constraint import equal_to
 # 解きたい数独の問題
 initial = np.array(
     [
-        [6,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0],
         [0,0,0,0,1,0,6,3,2],
         [0,1,0,0,2,0,0,8,0],
         [0,0,0,7,0,2,0,0,0],
@@ -45,7 +45,9 @@ def print_sudoku(sudoku):
 q = gen_symbols(BinaryPoly,9,9,9)
 
 ####################################################
-# 初期値の代入
+# 初期値（非ゼロ要素の変数=1）の代入
+#  np.nonzero -> 非ゼロ要素のインデックスを返す
+#  zip -> 要素をまとめる
 for i,j in zip(*initial.nonzero()):
     k = initial[i][j] -1
     q[i][j][k] = BinaryPoly(1)
@@ -81,7 +83,7 @@ block_constraints = [
 ####################################################
 # イジングマシン設定
 client = FixstarsClient()
-client.token = "GsTUUgM3WjSpAzfeqHR4jWJyUWfzGZJG"  #20240111 まで有効
+client.token = "AE/BvQt4eoat2yEBkC5Da60Rba9DtYSGJjh"  #20240703 まで有効
 client.parameters.timeout = 1000  # タイムアウト1秒
 client.parameters.outputs.duplicate = True  # 同じエネルギー値の解を列挙するオプション
 client.parameters.outputs.num_outputs = 0   # 見つかったすべての解を出力
@@ -115,4 +117,3 @@ if len(results) > 0:
     print_sudoku(final)
 else:
     print("not satisfied")
-

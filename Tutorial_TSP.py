@@ -71,7 +71,7 @@ for i in range(1, ncity):
 
 # クライアント設定
 client = FixstarsClient()
-client.token = "i5G6Ei3DKlGv2n6hsWBSBzWrmffLN4vn"  #20210011まで有効
+client.token = "AE/BvQt4eoat2yEBkC5Da60Rba9DtYSGJjh"  #20240703まで有効
 client.parameters.timeout = 5000  # タイムアウト5秒
 
 # ソルバの生成
