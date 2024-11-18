@@ -81,7 +81,7 @@ block_constraints = [
 ####################################################
 # イジングマシン設定
 client = FixstarsClient()
-client.token = "GsTUUgM3WjSpAzfeqHR4jWJyUWfzGZJG"  #20240111 まで有効
+client.token = "AE/BvQt4eoat2yEBkC5Da60Rba9DtYSGJjh"  #20240703 まで有効
 client.parameters.timeout = 1000  # タイムアウト1秒
 client.parameters.outputs.duplicate = True  # 同じエネルギー値の解を列挙するオプション
 client.parameters.outputs.num_outputs = 0   # 見つかったすべての解を出力

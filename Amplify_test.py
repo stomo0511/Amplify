@@ -2,16 +2,16 @@ import random
 from amplify import (
     BinaryPoly,
     BinaryQuadraticModel,
-    sum_poly,
-    gen_symbols,
-    Solver,
-    decode_solution,
+    # sum_poly,
+    # gen_symbols,
+    # Solver,
+    # decode_solution,
 )
-from amplify.constraint import (
-    equal_to,
-    penalty,
-)
-from amplify.client import FixstarsClient
+# from amplify.constraint import (
+#     equal_to,
+#     penalty,
+# )
+# from amplify.client import FixstarsClient
 
 
 # print(cost)
