@@ -1,156 +1,113 @@
+import sys
 import numpy as np
 import matplotlib.pyplot as plt
-from amplify import (
-    BinaryPoly,
-    BinaryQuadraticModel,
-    sum_poly,
-    gen_symbols,
-    Solver,
-    decode_solution,
-)
-from amplify.constraint import (
-    equal_to,
-    penalty,
-)
-from amplify.client import FixstarsClient
 
+# ランダムな配置の都市の生成
 def gen_random_tsp(ncity: int):
-    # 座標
-    locations = np.random.uniform(size=(ncity, 2))
+    rng = np.random.default_rng()
 
+    # 座標
+    locations = rng.random(size=(ncity, 2))
+    
     # 距離行列
-    all_diffs = np.expand_dims(locations, axis=1) - np.expand_dims(locations, axis=0)
-    distances = np.sqrt(np.sum(all_diffs ** 2, axis=-1))
+    x = locations[:, 0]
+    y = locations[:, 1]
+    distances = np.sqrt(
+        (x[:, np.newaxis] - x[np.newaxis, :]) ** 2
+        + (y[:, np.newaxis] - y[np.newaxis, :]) ** 2
+    )
 
     return locations, distances
 
 # 都市のプロット
-def show_plot(locs: np.ndarray):
+def show_plot(locations: np.ndarray):
     plt.figure(figsize=(7, 7))
     plt.xlabel("x")
     plt.ylabel("y")
-    plt.scatter(*zip(*locations))
+    plt.scatter(locations[:, 0], locations[:, 1])
     plt.show()
 
 # 都市と道順のプロット
-def show_route(route: list, distances: np.ndarray, locations: np.ndarray):
-
-    ncity = len(route)
-    path_length = sum(
-        [distances[route[i]][route[(i + 1) % ncity]] for i in range(ncity)]
-    )
-
+def show_route(NUM_CITIES, route: np.ndarray, distances: np.ndarray, locations: np.ndarray):
+    path_length = sum([distances[route[i]][route[(i + 1) % NUM_CITIES]] for i in range(NUM_CITIES)])
+    
     x = [i[0] for i in locations]
     y = [i[1] for i in locations]
     plt.figure(figsize=(7, 7))
     plt.title(f"path length: {path_length}")
     plt.xlabel("x")
     plt.ylabel("y")
-
-    for i in range(ncity):
+    
+    for i in range(NUM_CITIES):
         r = route[i]
-        n = route[(i + 1) % ncity]
+        n = route[(i + 1) % NUM_CITIES]
         plt.plot([x[r], x[n]], [y[r], y[n]], "b-")
     plt.plot(x, y, "ro")
     plt.show()
-
+    
     return path_length
 
-# 都市数
-ncity = 32
-locations, distances = gen_random_tsp(ncity)
+from amplify import VariableGenerator
+from amplify import sum as amplify_sum
+from amplify import one_hot
+from amplify import FixstarsClient, solve
+from datetime import timedelta
 
-# 変数の生成: ncity x nicity
-q = gen_symbols(BinaryPoly, ncity, ncity)
+###################################################################
+if __name__ == "__main__":
+    args = sys.argv
+    
+    if len(args) < 2:
+        print("Usage: python3 Tutorial_TSP.py <Num of cities>")
+        sys.exit(1)
+    
+    NUM_CITIES = int(args[1])
+    locations, distances = gen_random_tsp(NUM_CITIES)
 
-# 回転対称性の除去（始点の固定）
-q[0][0] = BinaryPoly(1)
-for i in range(1, ncity):
-    q[0][i] = BinaryPoly(0)
-    q[i][0] = BinaryPoly(0)
+    # 都市のプロット
+    # show_plot(locations)
+    
+    gen = VariableGenerator()
+    q = gen.array("Binary", shape=(NUM_CITIES + 1, NUM_CITIES))
+    q[NUM_CITIES, :] = q[0, :]  # 最初の都市と最後の都市は同じ。この固定はコスト関数、制約関数の定義より前に行う
 
-# クライアント設定
-client = FixstarsClient()
-client.token = "i5G6Ei3DKlGv2n6hsWBSBzWrmffLN4vn"  #20210011まで有効
-client.parameters.timeout = 5000  # タイムアウト5秒
-
-# ソルバの生成
-solver = Solver(client)
-
-##############################################################
-# コスト関数（修正版）
-# sum_{n=0}^{ncity-1} sum_{i=0}^{ncity-1} sum_{j=0}^{ncity-1} distance[i][j]*q[n][i]*q[n+1][j]
-# (n+1) % ncity : n=ncity-1 の時に n+1 -> 0 とするため
-
-# 各行の非ゼロ最小値をリストで取得
-d_min = [d[np.nonzero(d)].min() for d in distances]
-
-# コスト関数の係数を改変し定数項を加算
-cost = sum_poly(
-    ncity,
-    lambda n: sum_poly(
-        ncity,
-        lambda i: sum_poly(
-            ncity,
-            lambda j: (distances[i][j] - d_min[i] if i != j else 0)
-            * q[n][i]
-            * q[(n + 1) % ncity][j],
+    # コスト関数
+    cost = amplify_sum(
+        range(NUM_CITIES),
+        lambda n: amplify_sum(
+            range(NUM_CITIES),
+            lambda i: amplify_sum(
+                range(NUM_CITIES), lambda j: distances[i, j] * q[n, i] * q[n + 1, j]
+            ),
         ),
-    ),
-) + sum(d_min)
-
-# 各行の最小値を引いた上で全要素の最大値を取得
-d_max_all = max(distances.max(axis=1) - d_min)
-
-##############################################################
-# 行に対する制約
-# sum_{i=0}^{ncity-1} q[n][i] = 1 for all n
-# リスト内包表記
-row_constraints = [
-    equal_to(sum_poly([q[n][i] for i in range(ncity)]), 1) for n in range(ncity)
-]
-
-# 列に対する制約
-# sum_{n=0}^{ncity-1} q[n][i] = 1 for all i
-# リスト内包表記
-col_constraints = [
-    equal_to(sum_poly([q[n][i] for n in range(ncity)]), 1) for i in range(ncity)
-]
-
-# 反転対称性の除去
-# 順序に対する制約の追加
-pem_constraint = [
-    penalty(q[ncity - 1][i] * q[1][j])
-    for i in range(ncity)
-    for j in range(i + 1, ncity)
-]
-
-# 制約
-constraints = sum(row_constraints) + sum(col_constraints) + sum(pem_constraint)
-
-##############################################################
-# ・制約条件の強さはコスト関数に対して十分大きな値にする
-# ・制約の強さはできるだけ小さい方がよい解が出やすい
-# ・TSPでは距離行列の最大値
-constraints *= np.amax(distances)       # 制約条件の強さを設定
-
-model = cost + constraints * d_max_all  # 論理模型オブジェクト
-
-# ここまで定式化
-##############################################################
-# ソルバ起動
-result = solver.solve(model)
-
-if len(result) == 0:
-    raise RuntimeError("Any one of constraints is not satisfied.")
-
-energy, values = result[0].energy, result[0].values
-
-# 結果のデコード
-q_values = decode_solution(q, values, 1)
-
-# 移動順の生成
-route = np.where(np.array(q_values) == 1)[1]
-
-# 都市、経路、経路長の表示
-show_route(route, distances, locations)
+    )
+    
+    # 制約関数
+    # 最後の行を除いた q の各行のうち一つのみが 1 である制約
+    row_constraints = one_hot(q[:-1], axis=1)
+    
+    # 最後の行を除いた q の各列のうち一つのみが 1 である制約
+    col_constraints = one_hot(q[:-1], axis=0)
+    
+    constraints = row_constraints + col_constraints
+    
+    constraints *= np.amax(distances)  # 制約条件の強さを設定
+    # model = objective + constraints
+    model = cost + constraints
+    
+    client = FixstarsClient()
+    client.token = "AE/ar62PjutSqmuoEa8bvfyrEmjE1rCpOqE"
+    client.parameters.timeout = timedelta(milliseconds=1000)  # タイムアウト 1000 ミリ秒
+    
+    # ソルバーの設定と結果の取得
+    result = solve(model, client)
+    if len(result) == 0:
+        raise RuntimeError("At least one of the constraints is not satisfied.")
+    
+    print(f"Path length: {result.best.objective}")
+    
+    q_values =q.evaluate(result.best.values)
+    route = np.where(q_values[:-1] == 1)[1]
+    
+    # 都市と道順のプロット
+    # show_route(NUM_CITIES, route, distances, locations)
