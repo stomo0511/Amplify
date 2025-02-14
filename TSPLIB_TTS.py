@@ -128,7 +128,7 @@ if __name__ == "__main__":
 
 
     # num_sample個のサンプルをとる
-    num_sample = 10
+    num_sample = 2
     d = {"sample":[],"sampling_time":[],"energy":[]}
 
     for n in tqdm(range(num_sample)):
@@ -142,9 +142,12 @@ if __name__ == "__main__":
                 d["energy"].append(s.objective)
                 # print(f"e={s.objective}")
 
+    print(d)
+
     # TTSを算出
     # threshold_energy = 426
-    threshold_energy = 450
+    threshold_energy = 500
+    timeout = 1000
 
     def calc_TTS(d, tau):
         N = num_sample
@@ -154,13 +157,25 @@ if __name__ == "__main__":
             ["sample"].unique().shape[0]
         )
         ps_tau = n/N
-        TTS = tau * np.log(1-0.99)/np.log(1-ps_tau) if ps_tau != 0 else np.Inf
+        TTS = tau * np.log(1-0.99)/np.log(1-ps_tau) if ps_tau != 0 else np.inf
+        return TTS
+    
+    def calc_TTS2(d, tau):
+        N = num_sample
+        # tau ms 以内にthreshold_energy以下の解が得られたサンプル数
+        
+        df = pd.DataFrame(d)
+        df["sampling_time_ns"] = df["sampling_time"].astype("int64")
+        n = df.query(f"sampling_time_ns<={tau} & energy <= {threshold_energy}")["sample"].unique().shape[0]            
+
+        ps_tau = n/N
+        TTS = tau * np.log(1-0.99)/np.log(1-ps_tau) if ps_tau != 0 else np.inf
         return TTS
 
     # min_tau TTS(tau)を計算
     TTS_data = {"tau":[], "TTS":[]}
-    for t in tqdm(range(1000)):
-        TTS_data["TTS"].append(calc_TTS(d, t))
+    for t in tqdm(range(timeout)):
+        TTS_data["TTS"].append(calc_TTS2(d, t))
         TTS_data["tau"].append(t)
     print("tau:", np.argmin(TTS_data["TTS"]),"ms")
     print("TTS:", np.min(TTS_data["TTS"]),"ms")

@@ -128,8 +128,8 @@ if __name__ == "__main__":
         raise RuntimeError("At least one of the constraints is not satisfied.")
     
     print(f"Path length: {result.best.objective}")
-    print(result.client_result.execution_time.time_stamps)
-    print(result.solutions)
+    # print(result.client_result.execution_time.time_stamps)
+    # print(result.solutions)
     
     # 都市と道順のプロット
     q_values =q.evaluate(result.best.values)
