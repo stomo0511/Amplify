@@ -63,14 +63,97 @@ def load_tsp_file(filename):
 
     return ncity, distances, locations
 
-from amplify import VariableGenerator
-from amplify import sum as amplify_sum
-from amplify import one_hot
-from amplify import FixstarsClient, solve
-from amplify import einsum, Poly
+from amplify import (
+    VariableGenerator,
+    FixstarsClient,
+    Model,
+    Poly,
+    sum as amplify_sum,
+    solve,
+    einsum,
+    one_hot
+)
 import pandas as pd
 from datetime import timedelta
 from tqdm import tqdm
+from typing import TypedDict
+import dataclasses
+
+class FeasibleSamples(TypedDict):
+    sample: list[int]
+    sampling_time: list[int]
+    energy: list[float]
+
+
+@dataclasses.dataclass(frozen=True)
+class TTSResult:
+    feasible_sample_data: pd.DataFrame
+    tts_par_tau: pd.DataFrame
+    fs_rate: float
+    tts: float  # ms
+    tau: int  # ms
+
+
+class TTSCalculator:
+    def __init__(self, model: Model, ae_token: str, timeout: timedelta) -> None:
+        self.model = model
+        self.timeout = timeout
+        self.__timeout_ms = self.__to_ms(timeout)
+        self.client = FixstarsClient()
+        self.__init_client(ae_token)
+
+    def __init_client(self, ae_token: str) -> None:
+        self.client.token = ae_token
+        self.client.parameters.timeout = self.timeout
+        self.client.parameters.outputs.sort = False
+        self.client.parameters.outputs.num_outputs = 0
+
+    def __to_ms(self, t: timedelta) -> int:
+        return int(t.total_seconds() * 1000)
+
+    def __calc_tts(
+        self, df: pd.DataFrame, tau: int, threshold_energy: float, num_sample: int
+    ) -> float:
+        # tau ms 以内にthreshold_energy以下の解が得られたサンプル数
+        filtered = df.query(f"sampling_time <= {tau} & energy <= {threshold_energy}")
+        n = filtered["sample"].unique().shape[0]
+        ps_tau = n / num_sample
+        if ps_tau == 0.0:
+            return np.inf
+        else:
+            return tau * np.log(1 - 0.99) / np.log(1 - ps_tau)
+
+    def calc(self, threshold_energy: float, num_sample: int = 50) -> TTSResult:
+        dic: FeasibleSamples = {"sample": [], "sampling_time": [], "energy": []}
+        num_total = 0
+        num_fs = 0
+        for n in tqdm(range(num_sample), desc="Solving samples"):
+            result = solve(self.model, self.client, sort_solution=False, filter_solution=False)
+            if result.client_result is None:
+                continue
+            result.filter_solution = False
+            num_total += len(result.solutions)
+            for t, s in zip(
+                result.client_result.execution_time.time_stamps, result.solutions
+            ):
+                if s.feasible:
+                    num_fs += 1
+                    dic["sample"].append(n)
+                    dic["sampling_time"].append(self.__to_ms(t))
+                    dic["energy"].append(s.objective)
+        df = pd.DataFrame(dic)
+        data = {"tau": [], "tts": []}
+        for t in tqdm(range(self.__timeout_ms), desc="Calcilating TTS"):
+            data["tts"].append(self.__calc_tts(df, t, threshold_energy, num_sample))
+            data["tau"].append(t)
+        res = TTSResult(
+            feasible_sample_data=df,
+            tts_par_tau=pd.DataFrame(data),
+            fs_rate=num_fs / num_total,
+            tts=np.min(data["tts"]),
+            tau=int(np.argmin(data["tts"])),
+        )
+        return res
 
 ###################################################################
 if __name__ == "__main__":
@@ -120,62 +203,12 @@ if __name__ == "__main__":
     model = objective + constraints
     # model = cost + constraints
     
-    client = FixstarsClient()
-    client.token = "AE/ar62PjutSqmuoEa8bvfyrEmjE1rCpOqE"
-    client.parameters.timeout = timedelta(milliseconds=1000) # タイムアウトの設定
-    client.parameters.outputs.sort = False  # ソルバーの出力をソートしない
-    client.parameters.outputs.num_outputs = 0  # ソルバーの出力を全て表示
+    num_sample = 10
+    timeout = timedelta(milliseconds=1000)
 
+    calculator = TTSCalculator(model, "AE/ar62PjutSqmuoEa8bvfyrEmjE1rCpOqE", timeout)
+    res = calculator.calc(440, num_sample)
 
-    # num_sample個のサンプルをとる
-    num_sample = 2
-    d = {"sample":[],"sampling_time":[],"energy":[]}
-
-    for n in tqdm(range(num_sample)):
-        result = solve(model, client, sort_solution=False)
-        for t, s in zip(result.client_result.execution_time.time_stamps, result.solutions):
-            if s.feasible:
-                d["sample"].append(n)
-                # print(f"n={n}")
-                d["sampling_time"].append(t)
-                # print(f"t={t}")
-                d["energy"].append(s.objective)
-                # print(f"e={s.objective}")
-
-    print(d)
-
-    # TTSを算出
-    # threshold_energy = 426
-    threshold_energy = 500
-    timeout = 1000
-
-    def calc_TTS(d, tau):
-        N = num_sample
-        # tau ms 以内にthreshold_energy以下の解が得られたサンプル数
-        n = (
-            pd.DataFrame(d).query(f"sampling_time<={tau} & energy <= {threshold_energy}")
-            ["sample"].unique().shape[0]
-        )
-        ps_tau = n/N
-        TTS = tau * np.log(1-0.99)/np.log(1-ps_tau) if ps_tau != 0 else np.inf
-        return TTS
-    
-    def calc_TTS2(d, tau):
-        N = num_sample
-        # tau ms 以内にthreshold_energy以下の解が得られたサンプル数
-        
-        df = pd.DataFrame(d)
-        df["sampling_time_ns"] = df["sampling_time"].astype("int64")
-        n = df.query(f"sampling_time_ns<={tau} & energy <= {threshold_energy}")["sample"].unique().shape[0]            
-
-        ps_tau = n/N
-        TTS = tau * np.log(1-0.99)/np.log(1-ps_tau) if ps_tau != 0 else np.inf
-        return TTS
-
-    # min_tau TTS(tau)を計算
-    TTS_data = {"tau":[], "TTS":[]}
-    for t in tqdm(range(timeout)):
-        TTS_data["TTS"].append(calc_TTS2(d, t))
-        TTS_data["tau"].append(t)
-    print("tau:", np.argmin(TTS_data["TTS"]),"ms")
-    print("TTS:", np.min(TTS_data["TTS"]),"ms")
+    print(res.feasible_sample_data)
+    print(res.tts)
+    print(res.tau)
