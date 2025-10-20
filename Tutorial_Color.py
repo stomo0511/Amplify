@@ -2,17 +2,17 @@ from amplify import VariableGenerator
 import japanmap as jm
     
 colors = ["red", "green", "blue", "yellow"]
-num_colors = len(colors)
-num_region = len(jm.pref_names)
+num_colors = len(colors) # = 4
+num_region = len(jm.pref_names) # = 48
     
 gen = VariableGenerator()
-q = gen.array("Binary", shape=(num_region, num_colors))
+q = gen.array("Binary", shape=(num_region, num_colors)) # q[48][4]
 
 # 制約条件
 from amplify import sum as amplify_sum, one_hot, equal_to
     
 # 各領域に対する制約
-reg_constraints = one_hot(q[1:], axis=1)  # ダミー都道府県は定式化には含めない
+reg_constraints = one_hot(q[1:], axis=1)  # axis=1 は行方向に対する one-hot 制約
     
 # 隣接する領域間の制約
 adj_constraints = amplify_sum(
