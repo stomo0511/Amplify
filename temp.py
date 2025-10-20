@@ -8,46 +8,26 @@ num_colors = len(colors) # = 4
 gen = VariableGenerator()
 q = gen.array("Binary", shape=(num_region, num_colors)) # q[48][4]
 q[:, num_colors - 1] = 1  # Domain-wall 用に最後の色を固定
-# q = gen.array("Binary", shape=(num_region, num_colors-1)) # q[48][3]
 
 # 制約条件
 from amplify import sum as amplify_sum, one_hot, equal_to, domain_wall
     
-# 各領域に対する制約
-# reg_constraints = one_hot(q[1:], axis=1)  # axis=1 は行方向に対する one-hot 制約
-# reg_constraints = amplify_sum(
-#     domain_wall(q[i,:]) for i in range(num_region)
-# )
-
+# domain-wall 制約
 reg_constraints = 0
 for i in range(1, num_region):
     for c in range(num_colors-1):
         reg_constraints += equal_to(q[i, c] - q[i, c]*q[i, c+1], 0)
 
 # 隣接する領域間の制約
-# adj_constraints = amplify_sum(
-#     equal_to(q[i, :] * q[j, :], 0, axis=())
-#     for i in range(1, num_region)
-#     for j in jm.adjacent(
-#         i
-#     )  # j: 都道府県コード i の都道府県と隣接している都道府県コード
-#     if i < j  # type: ignore
-# )
-
 adj_constraints = 0
 for i in range(1, num_region):
     for j in jm.adjacent(i):  # j: 都道府県コード i の都道府県と隣接している都道府県コード
         if i < j:  # type: ignore
-            adj_constraints += equal_to((q[i, 1] - q[i, 0]) * (q[j, 1] - q[j, 0]), 0)
-            adj_constraints += equal_to((q[i, num_colors-1] - q[i, num_colors-2]) * (q[j, num_colors-1] - q[j, num_colors-2]), 0)
-            # for c in range(num_colors-1):
-                # adj_constraints += equal_to(q[i, c] * q[j, c], 0)
-                # adj_constraints += equal_to((q[i, c+1] - q[i, c]) * (q[j, c+1] - q[j, c]), 0)
+            for c in range(num_colors-1):
+                adj_constraints += equal_to((q[i, c+1] - q[i, c]) * (q[j, c+1] - q[j, c]), 0)
 
     
 model = reg_constraints + adj_constraints
-# model = reg_constraints
-# model = adj_constraints
 
 # ソルバー実行
 from amplify import FixstarsClient, solve
@@ -64,30 +44,7 @@ if len(result) == 0:
 
 q_values = q.evaluate(result.best.values)
 
-# for fixstars Domain-wall
-# for i in range(1, num_region):
-#     if (1 - q_values[i][num_colors-2]) == 1:
-#         dc = num_colors-1
-#     else:
-#         dc = 0
-#     for c in range(num_colors-2):
-#         if (q_values[i][c+1] - q_values[i][c]) == 1:
-#             dc = c+1
-#     print(f"region {i}: {q_values[i]} color {dc}")
-
-# print(q_values)
-
 import numpy as np
-
-# color_indices = (q_values[1:] @ np.arange(num_colors)).astype(
-#     int
-# )  # q_values の最初の行はダミー都道府県のものなので捨てる
-# color_map = {
-#     jm.pref_names[region_idx]: colors[color_idx]
-#     for region_idx, color_idx in enumerate(
-#         color_indices, start=1
-#     )  # region_idx は 1 スタートなことに注意
-# }
 
 color_indices = np.ndarray(num_region-1, dtype=int)
 for i in range(1, num_region):
