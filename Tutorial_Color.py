@@ -10,10 +10,12 @@ q = gen.array("Binary", shape=(num_region, num_colors)) # q[48][4]
 
 # 制約条件
 from amplify import sum as amplify_sum, one_hot, equal_to
-    
-# 各領域に対する制約
-reg_constraints = one_hot(q[1:], axis=1)  # axis=1 は行方向に対する one-hot 制約
-    
+
+###########################################
+# 各領域に対する制約: one-hot
+reg_constraints = one_hot(q[1:], axis=1)  # axis=1 は行方向に対する one-hot
+
+###########################################
 # 隣接する領域間の制約
 adj_constraints = amplify_sum(
     equal_to(q[i, :] * q[j, :], 0, axis=())
@@ -23,7 +25,8 @@ adj_constraints = amplify_sum(
     )  # j: 都道府県コード i の都道府県と隣接している都道府県コード
     if i < j  # type: ignore
 )
-    
+
+###########################################
 model = reg_constraints + adj_constraints
 
 # ソルバー実行
@@ -31,7 +34,7 @@ from amplify import FixstarsClient, solve
 from datetime import timedelta
     
 client = FixstarsClient()
-client.parameters.timeout = timedelta(milliseconds=5000)  # タイムアウト 5000 ms
+client.parameters.timeout = timedelta(milliseconds=1000)  # タイムアウト 5000 ms
 client.token = "AE/gd0y09RhHp0H0EcefLvtxYhbwl7Nk0US"  #20260113で有効
     
 # 求解と結果の取得
@@ -39,6 +42,12 @@ result = solve(model, client)
 if len(result) == 0:
     raise RuntimeError("Some constraints are unsatisfied.")
 
+# 実行可能解の判定
+if result.best.feasible:
+    print("Solution is feasible.")
+else:
+    print("Solution is NOT feasible.")
+    
 q_values = q.evaluate(result.best.values)
 
 import numpy as np
@@ -46,6 +55,7 @@ import numpy as np
 color_indices = (q_values[1:] @ np.arange(num_colors)).astype(
     int
 )  # q_values の最初の行はダミー都道府県のものなので捨てる
+
 color_map = {
     jm.pref_names[region_idx]: colors[color_idx]
     for region_idx, color_idx in enumerate(
