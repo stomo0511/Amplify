@@ -58,7 +58,7 @@ anchor_hard = equal_to(s(r, 0), 1)   # q[r,0] == 1
 
 ###########################################
 # model = reg_constraints1 + reg_constraints2 + adj_constraints
-model = 60.0*reg_constraints1 + 20.0*reg_constraints2 + 2.0*adj_constraints + anchor_hard
+model = 60.0*reg_constraints1 + 20.0*reg_constraints2 + 2.0*adj_constraints
 
 # 隣接リストの表示
 # for i in range(1, num_region):
@@ -73,6 +73,7 @@ model = 60.0*reg_constraints1 + 20.0*reg_constraints2 + 2.0*adj_constraints + an
 from amplify import solve, FixstarsClient
 # from amplify import solve, FujitsuDA4Client
 # from amplify import solve, ToshibaSQBM2Client
+# from amplify import solve, DWaveSamplerClient
 from datetime import timedelta
 
 
@@ -81,6 +82,9 @@ client.token = "AE/gd0y09RhHp0H0EcefLvtxYhbwl7Nk0US"  #20260113で有効
 # client.token = "DA/ubdUmA6AskGYxBxdBkHgbMU2HJd4p6L5"  #20260129で有効
 # client = ToshibaSQBM2Client()
 # client.token = "SQBM+2/Xzu4OCAfFasnXkPVKmv7iPLuEtEWBsfd"  #20260129で有効
+# client = DWaveSamplerClient()
+# client.token = "DWAVE/ncipDFa226I69ogBsz2R47cWvgUuGi9f"
+# client.solver = "Advantage_system6.1"  # D-Wave Advantage
 
 client.parameters.timeout = timedelta(milliseconds=2000)  # タイムアウト
     
